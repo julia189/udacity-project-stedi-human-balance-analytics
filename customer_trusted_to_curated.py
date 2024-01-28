@@ -5,6 +5,7 @@ from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
 from awsglue.dynamicframe import DynamicFrame
+from pyspark.sql import functions as SqlFuncs
 
 args = getResolvedOptions(sys.argv, ["JOB_NAME"])
 sc = SparkContext()
@@ -12,18 +13,6 @@ glueContext = GlueContext(sc)
 spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
-
-# Script generated for node Source - Customer Trusted
-SourceCustomerTrusted_node1706456002494 = glueContext.create_dynamic_frame.from_options(
-    format_options={"multiline": False},
-    connection_type="s3",
-    format="json",
-    connection_options={
-        "paths": ["s3://raw-data-udacity-project/customer/trusted/"],
-        "recurse": True,
-    },
-    transformation_ctx="SourceCustomerTrusted_node1706456002494",
-)
 
 # Script generated for node Source - Accelerometer Trusted
 SourceAccelerometerTrusted_node1706456042193 = (
@@ -39,24 +28,25 @@ SourceAccelerometerTrusted_node1706456042193 = (
     )
 )
 
+# Script generated for node Source - Customer Trusted
+SourceCustomerTrusted_node1706456002494 = glueContext.create_dynamic_frame.from_options(
+    format_options={"multiline": False},
+    connection_type="s3",
+    format="json",
+    connection_options={
+        "paths": ["s3://raw-data-udacity-project/customer/trusted/"],
+        "recurse": True,
+    },
+    transformation_ctx="SourceCustomerTrusted_node1706456002494",
+)
+
 # Script generated for node Join
-SourceAccelerometerTrusted_node1706456042193DF = (
-    SourceAccelerometerTrusted_node1706456042193.toDF()
-)
-SourceCustomerTrusted_node1706456002494DF = (
-    SourceCustomerTrusted_node1706456002494.toDF()
-)
-Join_node1706456071185 = DynamicFrame.fromDF(
-    SourceAccelerometerTrusted_node1706456042193DF.join(
-        SourceCustomerTrusted_node1706456002494DF,
-        (
-            SourceAccelerometerTrusted_node1706456042193DF["user"]
-            == SourceCustomerTrusted_node1706456002494DF["email"]
-        ),
-        "right",
-    ),
-    glueContext,
-    "Join_node1706456071185",
+Join_node1706456071185 = Join.apply(
+    frame1=SourceAccelerometerTrusted_node1706456042193,
+    frame2=SourceCustomerTrusted_node1706456002494,
+    keys1=["user"],
+    keys2=["email"],
+    transformation_ctx="Join_node1706456071185",
 )
 
 # Script generated for node Drop Fields
@@ -66,9 +56,16 @@ DropFields_node1706456169536 = DropFields.apply(
     transformation_ctx="DropFields_node1706456169536",
 )
 
+# Script generated for node Drop Duplicates
+DropDuplicates_node1706458047002 = DynamicFrame.fromDF(
+    DropFields_node1706456169536.toDF().dropDuplicates(),
+    glueContext,
+    "DropDuplicates_node1706458047002",
+)
+
 # Script generated for node Target - Customer Curated
 TargetCustomerCurated_node1706456190437 = glueContext.write_dynamic_frame.from_options(
-    frame=DropFields_node1706456169536,
+    frame=DropDuplicates_node1706458047002,
     connection_type="s3",
     format="json",
     connection_options={
