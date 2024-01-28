@@ -4,6 +4,7 @@ from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
+from awsglue.dynamicframe import DynamicFrame
 
 args = getResolvedOptions(sys.argv, ["JOB_NAME"])
 sc = SparkContext()
@@ -39,18 +40,29 @@ SourceAccelerometerTrusted_node1706456042193 = (
 )
 
 # Script generated for node Join
-Join_node1706456071185 = Join.apply(
-    frame1=SourceAccelerometerTrusted_node1706456042193,
-    frame2=SourceCustomerTrusted_node1706456002494,
-    keys1=["user"],
-    keys2=["email"],
-    transformation_ctx="Join_node1706456071185",
+SourceAccelerometerTrusted_node1706456042193DF = (
+    SourceAccelerometerTrusted_node1706456042193.toDF()
+)
+SourceCustomerTrusted_node1706456002494DF = (
+    SourceCustomerTrusted_node1706456002494.toDF()
+)
+Join_node1706456071185 = DynamicFrame.fromDF(
+    SourceAccelerometerTrusted_node1706456042193DF.join(
+        SourceCustomerTrusted_node1706456002494DF,
+        (
+            SourceAccelerometerTrusted_node1706456042193DF["user"]
+            == SourceCustomerTrusted_node1706456002494DF["email"]
+        ),
+        "right",
+    ),
+    glueContext,
+    "Join_node1706456071185",
 )
 
 # Script generated for node Drop Fields
 DropFields_node1706456169536 = DropFields.apply(
     frame=Join_node1706456071185,
-    paths=["y", "x", "timestamp", "user"],
+    paths=["y", "x", "timestamp", "user", "z"],
     transformation_ctx="DropFields_node1706456169536",
 )
 
